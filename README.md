@@ -6,11 +6,11 @@ add owner id and discord bot access token in ".env"
 # Make sure python 3.x and all packages from requirements is installed
 
 # bot.py # AI chatbot
-# instructions
+Instructions
 
 py bot.py   # launch command
 command prefix ';'
-# go ahead and enjoy your conversation with the bot
+go ahead and enjoy your conversation with the bot
 
 
 # music_bot.py 
