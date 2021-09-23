@@ -1,10 +1,9 @@
-# music_bot.py
+# bot.py
 import os
-
 from dotenv import load_dotenv
 from discord.ext import commands
 from discord.utils import get
-from discord import FFmpegPCMAudio
+from discord import FFmpegPCMAudio,Status,Game
 from youtube_dl import YoutubeDL
 from pytube import Search
 
@@ -26,32 +25,27 @@ def get_yt_info(name):
 def get_source(url):
     with YoutubeDL({"format": "bestaudio", "noplaylist": "True"}) as ydl:
         info = ydl.extract_info(url, download=False)
-    return (
-        FFmpegPCMAudio(
-            info["url"],
-            **{
-                "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-                "options": "-vn",
-            },
-        ),
-        info["title"],
-    )
+    return FFmpegPCMAudio(info["url"], **{
+        "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+        "options": "-vn",
+    }), info["title"]
 
 
-def check_queue(ctx, id):
+def check_queue(ctx):
     if queue[id] != []:
         voice = get(tedbot.voice_clients, guild=ctx.guild)
-        queue[id].pop(0)
-        queue_title[id].pop(0)
+        queue[ctx.guild.id].pop(0)
+        queue_title[ctx.guild.id].pop(0)
         try:
-            if queue[id][0][0:4] == "https":
+            if queue[ctx.guild.id][0][0:4] == "https":
                 # play with url
-                source, title = get_source(queue[id][0])
+                source, title = get_source(queue[ctx.guild.id][0])
             else:
                 # youtube search engine
-                source, title = get_source(get_yt_info(queue[id][0]))
+                source, title = get_source(get_yt_info(queue[ctx.guild.id][0]))
             voice.play(source)
-            print(queue_title[id])
+            print(queue_title[ctx.guild.id])
+
         except IndexError:
             print("[bot] Empty queue")
 
@@ -78,7 +72,7 @@ async def resume(ctx):
         await ctx.send("***Resuming***", delete_after=5)
 
 
-# command to pause
+# command to pause 
 @tedbot.command()
 async def pause(ctx):
     voice = get(tedbot.voice_clients, guild=ctx.guild)
@@ -123,7 +117,11 @@ async def play(ctx, *argv):
         queue[guild_id].append(url)
         queue_title[guild_id].append(title)
         url = ""
-        voice.play(source, after=lambda x=None: check_queue(ctx, ctx.message.guild.id))
+        voice.play(
+            source, after=lambda x=None: check_queue(ctx)
+        )
+        ## clean variable
+        source,title = None,None
         await ctx.send("***Playing*** : " + title)
     else:
         # added to queue
@@ -132,24 +130,29 @@ async def play(ctx, *argv):
         await ctx.send("***Added to queue*** : " + title)
         print(queue_title[guild_id])
 
-
 @tedbot.command(pass_context=True)
 async def skip(ctx):
     voice = get(tedbot.voice_clients, guild=ctx.guild)
     if voice.is_playing():
         voice.pause()
-    check_queue(ctx, ctx.message.guild.id)
+    check_queue(ctx,ctx.message.guild.id)
 
+
+@tedbot.command(pass_context=True)
+async def clear(ctx):
+    queue[ctx.message.guild.id] = []
+    queue_title[ctx.message.guild.id] = []
+    
+    await ctx.send("***Queue Cleared***")
 
 # command to stop voice
 @tedbot.command()
 async def q(ctx):
     msg = ""
-    for n, song in enumerate(queue_title[ctx.guild.id]):
+    for n,song in enumerate(queue_title[ctx.guild.id]):
         msg += str(n + 1) + ". " + song + "\n"
     print(msg)
     await ctx.send("***Queue*** : \n" + msg)
-
 
 # Admin command
 @tedbot.command()
@@ -157,25 +160,45 @@ async def q(ctx):
 async def shutdown(ctx):
     await ctx.bot.logout()
 
+@tedbot.command()
+@commands.is_owner()
+async def takeover(ctx):
+    await ctx.send("Taking over server ....")
 
 @tedbot.command()
 @commands.is_owner()
-async def takeover_server(ctx):
-    await ctx.send("Taking over server ....")
+async def allow(ctx,id):
+  try:
+    queue[id] = []
+    queue_title[id] = []
+    await ctx.send("Server added successful : " + id)
+  except Exception:
+    await ctx.send("Notice : server id required ")
+
+@tedbot.command()
+@commands.is_owner()
+async def showid(ctx):
+    await ctx.send("Server ID : " + str(ctx.guild.id))
+
+@tedbot.command()
+@commands.is_owner()
+async def chstatus(ctx,*argv):
+    status_string = ""
+    for l in argv:
+      status_string += l + " "
+    await tedbot.change_presence(status=Status.online, activity=Game(status_string))
 
 
 #### EVENTS #####
 @tedbot.event
 async def on_ready():
     server_count = len(tedbot.guilds)
-    print(
-        f"[bot]Status = [Online]\n[bot]Connected Server List , Total : {server_count}"
-    )
+    print(f"[bot]Status = [Online]\n[bot]Connected Server List , Total : {server_count}")
     for no, server in enumerate(tedbot.guilds):
         queue[server.id] = []
         queue_title[server.id] = []
         print(f"{no+1}. Name: {server.name} , ID : {server.id}")
-    print("[bot] Events :")
-
+    await tedbot.change_presence(status=Status.online, activity=Game("Your Mom"))
+    print('[bot] Events :')
 
 tedbot.run(TOKEN, bot=True)
