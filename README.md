@@ -3,6 +3,11 @@
 add owner id and discord bot access token in ".env"
 
 # BEFORE YOU RUN 
+create your bot and add your bot's access token and owner ID in ".env"
+
+get your bot access token from here : 
+https://discord.com/developers/applications
+
 # Make sure python 3.x and all packages from requirements is installed
 
 # bot.py # AI chatbot
