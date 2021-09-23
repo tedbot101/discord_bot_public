@@ -42,3 +42,6 @@ usage :
 leave : tell the bot to leave the channel
 usage : 
         ~leave
+
+        
+# Suggestion and advices are always welcome - tedbot
